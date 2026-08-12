@@ -1,0 +1,1001 @@
+<!--
+  ================================================================
+  SETTLEMENT TRAINING — full settlement-tab replica (v4)
+  Home · Start · Practice · Results · Create · Guide
+  A created event = a settlement case. Practice renders the whole
+  event page. An event only closes when EVERY section is answered
+  (or the entire event is postponed). Sample/fake data only ·
+  no secrets · internal use. Persists via guarded localStorage.
+  ================================================================
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Settlement Training</title>
+<style>
+  :root{
+    --navy:#12558f;--navy-2:#0e4576;--line:#d5dbe1;--line-2:#e7eaee;
+    --ink:#1d2733;--ink-2:#586472;--muted:#8a94a0;--sel:#e8f0fa;--teal:#155e8c;--link:#1a5fb4;
+    --ok:#1b7a3d;--ok-bg:#e9f7ee;--bad:#c0392b;--bad-bg:#fdeceb;--grey-row:#eef1f4;
+    --font:"Segoe UI",Arial,Helvetica,sans-serif;
+  }
+  *{box-sizing:border-box}html,body{height:100%}
+  body{margin:0;font-family:var(--font);font-size:13px;color:var(--ink);background:#eef1f4}
+  .topbar{display:flex;align-items:center;background:var(--navy-2);color:#fff}
+  .topbar .brand{font-weight:700;padding:11px 16px;letter-spacing:.02em}
+  .topbar .brand small{font-weight:400;color:#a9c2da;margin-left:8px}
+  .topbar .nav{margin-left:auto;display:flex;gap:2px;padding-right:8px}
+  .topbar .nav button{background:none;border:0;color:#c9d6e6;font:inherit;font-weight:600;padding:12px 15px;cursor:pointer;border-bottom:3px solid transparent}
+  .topbar .nav button:hover{color:#fff}.topbar .nav button.on{color:#fff;border-bottom-color:#7fb2ef;background:var(--navy)}
+  .screen{display:none}.screen.on{display:block}
+  .wrap{max-width:980px;margin:0 auto;padding:26px 20px 60px}
+  .hero{background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .hero .bar{background:var(--navy);color:#fff;padding:13px 20px;font-weight:700}
+  .hero .in{padding:24px 22px}
+  .hero h1{margin:0 0 6px;font-size:23px;letter-spacing:-.02em}.hero p{margin:0 0 20px;color:var(--ink-2);max-width:62ch}
+  .actions{display:grid;grid-template-columns:1fr 1fr;gap:14px}@media(max-width:560px){.actions{grid-template-columns:1fr}}
+  .action{display:block;text-align:left;background:#fff;border:1px solid var(--line);border-radius:10px;padding:18px;cursor:pointer;font:inherit;transition:box-shadow .15s,border-color .15s,transform .15s}
+  .action:hover{box-shadow:0 6px 18px rgba(16,18,22,.09);border-color:#b9c6d6;transform:translateY(-2px)}
+  .action .ic{width:40px;height:40px;border-radius:9px;background:var(--sel);color:var(--navy);display:grid;place-items:center;font-size:20px;margin-bottom:12px}
+  .action .t{font-weight:700;font-size:16px}.action .s{color:var(--ink-2);margin-top:3px}
+  .home-stats{display:flex;gap:22px;margin-top:20px;color:var(--ink-2);flex-wrap:wrap}.home-stats b{color:var(--ink)}
+  .card{background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden;max-width:520px;margin:0 auto}
+  .card .bar{background:var(--navy);color:#fff;padding:12px 18px;font-weight:700}.card .in{padding:20px}
+  .field{margin-bottom:16px}.field label{display:block;font-weight:600;margin-bottom:7px}
+  .field select,.field input{width:100%;font:inherit;font-size:14px;padding:10px 12px;border:1px solid var(--line);border-radius:7px;background:#fff}
+  .field select:focus,.field input:focus{outline:none;border-color:var(--navy)}
+  .switch{display:flex;align-items:center;gap:10px;cursor:pointer}
+  .toggle{width:38px;height:20px;border-radius:99px;background:#c7ccd2;position:relative;transition:background .2s;flex:none}
+  .toggle::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:left .2s}
+  .toggle.on{background:var(--navy)}.toggle.on::after{left:20px}
+  .hint{color:var(--muted);font-size:12px;margin-top:6px}
+  .btn{border:1px solid var(--navy);background:var(--navy);color:#fff;font:inherit;font-weight:700;padding:9px 18px;border-radius:4px;cursor:pointer}
+  .btn:hover{background:var(--navy-2)}.btn.ghost{background:#fff;color:var(--navy);font-weight:600}
+  .btn:disabled{opacity:.45;cursor:default}
+  .err{color:var(--bad);font-weight:600;margin-top:8px}
+
+  .cols{display:grid;grid-template-columns:320px 1fr;height:calc(100vh - 44px);background:#fff}
+  @media(max-width:760px){.cols{grid-template-columns:1fr}.cols .detail{display:none}.cols.showing .list{display:none}.cols.showing .detail{display:block}}
+  .list{border-right:1px solid var(--line);overflow-y:auto}
+  .list-head{padding:8px 12px;border-bottom:1px solid var(--line);background:var(--grey-row);display:flex;justify-content:space-between;align-items:center}
+  .list-head.sub{background:#fff;font-weight:400;color:var(--ink)}
+  .elist-row{display:grid;grid-template-columns:22px 1fr auto;gap:9px;align-items:center;padding:9px 12px;border-bottom:1px solid var(--line-2);cursor:pointer}
+  .elist-row:hover{background:#f7f9fb}.elist-row.sel{background:var(--sel);box-shadow:inset 3px 0 0 var(--navy)}
+  .elist-row .add{width:19px;height:19px;border:1px solid #b8c0c9;border-radius:50%;color:var(--ink-2);display:grid;place-items:center;font-size:13px}
+  .elist-row .nm{color:var(--link)}.elist-row .nm .idr{color:var(--muted)}
+  .elist-row .tm{color:var(--ink);font-weight:600;margin-right:4px}.elist-row .turn{color:var(--ink-2)}
+  .empty{padding:22px 14px;color:var(--muted)}
+
+  .detail{overflow-y:auto}
+  .detail-empty{padding:40px 20px;color:var(--muted);text-align:center}
+  .ev-head{padding:9px 14px;border-bottom:1px solid var(--line)}
+  .ev-head .r1{display:flex;align-items:center;gap:7px}
+  .ev-head .nav{color:var(--muted);font-weight:700;letter-spacing:-1px}
+  .ev-head .time{color:var(--ink)}.ev-head .ttl{font-weight:700}.ev-head .id{color:var(--muted)}
+  .ev-head .timer{margin-left:auto;font-variant-numeric:tabular-nums;font-weight:700;color:var(--navy);background:var(--sel);padding:3px 9px;border-radius:5px}
+  .ev-head .close{color:var(--muted);cursor:pointer;font-size:15px;margin-left:8px}
+  .ev-head .bc{color:var(--teal);margin-top:2px}
+  .section .sec-head{background:var(--navy);color:#fff;padding:7px 14px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;font-weight:600}
+  .section.collapsed .sec-body{display:none}.section.collapsed .chev{transform:rotate(180deg)}.chev{transition:transform .2s;font-size:11px}
+
+  /* postponements */
+  .pp{padding:10px 14px}
+  .pp-row{display:grid;grid-template-columns:130px auto;gap:10px;align-items:center;padding:6px 0}
+  .pp-row select{font:inherit;padding:6px 9px;border:1px solid var(--line);border-radius:6px}
+  .pp-row input{width:16px;height:16px}
+
+  table.pos{width:100%;border-collapse:collapse}
+  table.pos thead th{text-align:left;background:var(--grey-row);padding:7px 14px;border-bottom:1px solid var(--line);font-weight:600;white-space:nowrap}
+  table.pos tbody td{padding:0 14px;border-bottom:1px solid var(--line-2);height:32px}
+  table.pos tbody tr:nth-child(odd){background:#fafbfc}
+  .plc-input{width:44px;border:0;border-bottom:1px solid #9aa5b1;background:transparent;text-align:center;font:inherit;padding:2px 0}
+  .plc-input:focus{outline:none;border-bottom-color:var(--navy)}
+  table.res{width:100%;border-collapse:collapse}
+  table.res thead th{background:var(--grey-row);padding:9px 10px;border-bottom:1px solid var(--line);font-weight:600;text-align:center;vertical-align:bottom;min-width:78px}
+  table.res thead th.lbl{text-align:left;min-width:auto}
+  table.res td{padding:9px 10px;border-bottom:1px solid var(--line-2);text-align:center}
+  table.res td.lbl{text-align:left}.res .hh{color:var(--teal)}
+  .sc-input{width:40px;border:0;border-bottom:1px solid #9aa5b1;background:transparent;text-align:center;font:inherit;padding:2px 0}
+  .sc-input:focus{outline:none;border-bottom-color:var(--navy)}
+
+  /* player occurrences — faithful to the settle screen */
+  .occ{display:grid;grid-template-columns:1fr 1.35fr 1fr;gap:0;background:#ececec}
+  @media(max-width:720px){.occ{grid-template-columns:1fr}}
+  .occ-team{background:#ececec}
+  .occ-tname{font-weight:700;color:var(--ink);padding:8px 12px 3px}
+  .occ-starter-all{display:flex;align-items:center;gap:8px;padding:2px 12px 5px;color:var(--ink)}
+  .occ-starter-all input{width:14px;height:14px}
+  .occ-unlisted{color:#ab7f3a;padding:4px 12px}
+  .occ-players{list-style:none;margin:0;padding:0 0 10px}
+  .occ-p{display:flex;align-items:center;gap:9px;padding:4px 12px}
+  .occ-p input{width:14px;height:14px}
+  .occ-name{font-weight:700;color:var(--ink);cursor:pointer}
+  .occ-name:hover{color:var(--link);text-decoration:underline}
+  /* .occ-teamhead retained for the Create builder */
+  .occ-teamhead{display:flex;justify-content:space-between;align-items:center;padding:7px 12px;border-bottom:1px solid var(--line);background:#f7f9fb}
+  .occ-teamhead b{color:var(--teal)}.occ-teamhead label{display:flex;align-items:center;gap:6px;color:var(--ink-2)}
+  .occ-mid{background:#fff;border-left:1px solid #dadde1;border-right:1px solid #dadde1;padding:10px 14px;display:flex;flex-direction:column}
+  .occ-mid .logs{display:flex;flex-direction:column;gap:7px;margin-bottom:14px}
+  .occ-mid .logs label{display:flex;align-items:center;gap:8px;color:var(--ink)}
+  .occ-mid .logs input{width:14px;height:14px}
+  .occ-events{display:flex;flex-direction:column;gap:8px;min-height:18px;margin-bottom:12px}
+  .occ-ev{display:flex;align-items:center;gap:8px}
+  .occ-ev.credit-home{justify-content:flex-start}
+  .occ-ev.credit-away{justify-content:flex-end}
+  .occ-ev .ev-name{font-weight:600;color:var(--ink)}
+  .tag{display:inline-flex;align-items:center;gap:6px;font-size:12px;border-radius:99px;padding:3px 10px;color:#fff;white-space:nowrap}
+  .tag.Goal,.tag.OwnGoal{background:#6cbf7c}
+  .tag.Substitution{background:#74c8c8}
+  .tag .x{border:0;background:rgba(255,255,255,.45);color:#fff;border-radius:50%;width:15px;height:15px;line-height:1;cursor:pointer;font-size:9px;display:grid;place-items:center;padding:0}
+  .tag .x:hover{background:rgba(255,255,255,.75)}
+  .occ-tally{color:var(--ink);text-align:center}
+  .tally-line{display:flex;justify-content:center;align-items:center;gap:14px;padding:2px 0}
+  .tally-line .n{font-weight:700;min-width:16px;color:#2f6fb0}
+  .tally-line .tl{color:#6b7580;min-width:104px}
+  .occ-menu{position:fixed;z-index:60;background:#fff;border:1px solid var(--line);border-radius:8px;box-shadow:0 10px 26px rgba(16,18,22,.2);min-width:150px;overflow:hidden}
+  .occ-menu-head{padding:7px 12px;color:var(--muted);border-bottom:1px solid var(--line-2);font-size:12px}
+  .occ-menu-item{padding:9px 12px;cursor:pointer}.occ-menu-item:hover{background:var(--sel)}
+
+  .bo-tools{display:grid;grid-template-columns:1fr 60px 1fr;gap:8px;align-items:center;padding:7px 14px;background:var(--grey-row);border-bottom:1px solid var(--line)}
+  .bo-tools .h-out{font-weight:600}.bo-tools .h-void{font-weight:600;text-align:center}
+  .bo-tools .h-right{display:flex;align-items:center;gap:14px;justify-content:flex-end}
+  .bo-tools .desc{color:var(--ink-2)}.bo-tools .search{border:0;border-bottom:1px solid var(--muted);padding:1px 4px;width:90px;background:transparent}
+  .bo-tools .filters{display:flex;gap:12px}.bo-tools label{display:flex;align-items:center;gap:5px;color:var(--ink-2)}
+  .bo-tools .noent{color:#b7c0c9;font-size:15px}
+  .offer{display:grid;grid-template-columns:1fr 60px 1fr 26px;gap:8px;padding:11px 14px;border-bottom:1px solid var(--line);align-items:start}
+  .outs{display:grid;gap:7px}.oc{display:flex;align-items:center;gap:8px;cursor:pointer}.oc input{width:15px;height:15px}
+  .void-col{display:flex;align-items:center;justify-content:center;gap:8px;padding-top:1px}.void-col .eye{color:var(--ink-2)}.void-col input{width:15px;height:15px}
+  .resettle{border:0;background:none;cursor:pointer;font-size:14px;color:var(--ink-2);padding:0}.resettle:hover{color:var(--bad)}
+  .offer.is-settled{background:#fafbfc}.offer.is-settled .oc{color:var(--muted)}.offer.is-settled input{cursor:default}
+  .mkt .m1{color:var(--ink)}.mkt .m2{color:var(--muted);margin-top:2px}.offer .noent{color:#b7c0c9;font-size:15px;text-align:center}
+  button.noent{border:0;background:none;cursor:pointer;padding:0;line-height:1}button.noent:hover{color:#7f8b96}
+  button.noent.nr-on{color:var(--navy);font-weight:800}
+  .nr-label{color:var(--ink-2);font-size:12px;margin-top:3px;font-style:italic}
+  .actionbar{display:flex;justify-content:flex-end;align-items:center;padding:12px 14px;gap:10px}
+
+  .res-score{font-size:27px;font-weight:800;letter-spacing:-.02em}.res-score .pass{color:var(--ok)}.res-score .fail{color:var(--bad)}
+  .res-sub{color:var(--ink-2);margin:4px 0 16px}
+  .res-meta{display:flex;gap:22px;margin-bottom:16px;color:var(--ink-2);flex-wrap:wrap}.res-meta b{color:var(--ink)}
+  .res-block{border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-bottom:14px}
+  .res-block h4{margin:0;background:#f4f6f8;padding:9px 14px;font-size:13px;border-bottom:1px solid var(--line)}
+  .res-item{display:flex;justify-content:space-between;gap:12px;padding:9px 14px;border-bottom:1px solid var(--line-2)}
+  .res-item:last-child{border-bottom:0}.res-item .verdict{font-weight:600;white-space:nowrap}
+  .res-item.correct{background:var(--ok-bg)}.res-item.correct .verdict{color:var(--ok)}
+  .res-item.wrong{background:var(--bad-bg)}.res-item.wrong .verdict{color:var(--bad)}
+
+  .subhead{font-weight:700;margin:18px 0 8px;padding-top:12px;border-top:1px solid var(--line-2)}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}@media(max-width:560px){.row2{grid-template-columns:1fr}}
+  .oa,.teamcfg{border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:12px;background:#fbfcfd}
+  .oa-top{display:flex;gap:10px;align-items:flex-end;margin-bottom:10px}.oa-top .field{flex:1;margin:0}
+  .rm{border:1px solid var(--line);background:#fff;color:var(--bad);border-radius:6px;padding:8px 11px;cursor:pointer;font:inherit;white-space:nowrap}
+  .oc-a{display:grid;grid-template-columns:1fr 110px auto;gap:8px;margin-bottom:7px}
+  .oc-a input,.oc-a select{font:inherit;padding:7px 9px;border:1px solid var(--line);border-radius:6px}.oc-a label{display:flex;align-items:center;gap:6px;justify-content:center}
+  .rmc{border:1px solid var(--line);background:#fff;color:var(--muted);border-radius:6px;padding:6px 9px;cursor:pointer}
+  .pl-a,.lp-a{display:grid;grid-template-columns:1fr 90px auto;gap:8px;margin-bottom:7px}.pl-a input,.lp-a input{font:inherit;padding:7px 9px;border:1px solid var(--line);border-radius:6px}
+  .lp-a label{display:flex;align-items:center;gap:6px;justify-content:center}
+  .occ-a{display:grid;grid-template-columns:90px 1fr 120px auto;gap:8px;margin-bottom:7px}
+  .occ-a input,.occ-a select{font:inherit;padding:7px 9px;border:1px solid var(--line);border-radius:6px}
+  .addlink{background:none;border:1px dashed var(--line);color:var(--navy);border-radius:6px;padding:7px 11px;cursor:pointer;font:inherit;font-weight:600}
+  .rescfg{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:8px}
+  .rescfg input{font:inherit;padding:7px 9px;border:1px solid var(--line);border-radius:6px;text-align:center}.rescfg .lbl2{grid-column:1/-1;font-weight:600;margin-top:6px}
+  .voidwin{display:flex;gap:14px;align-items:center;margin:8px 0}
+  .cat-row{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+  .line{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border:1px solid var(--line);border-radius:8px;margin-bottom:8px;background:#fff}
+  .msg{font-weight:600}.msg.ok{color:var(--ok)}.msg.err{color:var(--bad)}
+  .hidden{display:none}
+  .ie-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+  .guide h3{margin:16px 0 6px}.guide p,.guide li{color:var(--ink-2)}.guide ul{margin:6px 0 0;padding-left:20px}
+  .learn .tagline{color:var(--ink-2);max-width:74ch;margin:0 0 16px}
+  .learn .section{border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-bottom:12px}
+  .learn .sec-body{padding:14px 16px;color:var(--ink-2)}
+  .learn .sec-body p{margin:0 0 10px}.learn .sec-body p:last-child{margin:0}
+  .learn .sec-body b{color:var(--ink)}
+  .learn .sec-body ul{margin:0;padding-left:20px}.learn .sec-body li{margin:5px 0}
+  .learn .note{background:#fff8ec;border:1px solid #efe0c2;color:#7a5c1e;border-radius:8px;padding:12px 14px;margin-top:8px}
+  .learn .sub{font-weight:700;color:var(--navy);font-size:11px;letter-spacing:.04em;text-transform:uppercase;margin:0 0 6px}
+  .learn .sec-body p+.sub{margin-top:14px}
+  .chk{display:flex;align-items:center;gap:8px;margin:6px 0}
+  .assistant{margin-top:22px;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#fff;box-shadow:0 6px 20px rgba(16,18,22,.06)}
+  .asst-head{background:linear-gradient(120deg,var(--navy-2),var(--navy));color:#fff;padding:11px 14px;display:flex;align-items:center;justify-content:space-between}
+  .asst-id{display:flex;align-items:center;gap:10px}
+  .asst-ava{width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.15);display:grid;place-items:center;flex:none}
+  .asst-ava svg{width:20px;height:20px}
+  .asst-title{font-weight:700;line-height:1.1}
+  .asst-sub{font-size:11px;color:#bcd3ea;margin-top:1px}
+  .asst-clear{background:rgba(255,255,255,.14);border:0;color:#eaf1fb;font:inherit;font-size:12px;font-weight:600;padding:6px 11px;border-radius:8px;cursor:pointer}
+  .asst-clear:hover{background:rgba(255,255,255,.26)}
+  .asst-msgs{flex:1;min-height:0;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:12px;background:#f6f8fc}
+  .row{display:flex;gap:9px;align-items:flex-end;max-width:88%}
+  .row.user{align-self:flex-end;flex-direction:row-reverse}
+  .row .av{width:26px;height:26px;border-radius:50%;flex:none;display:grid;place-items:center;background:var(--navy);color:#fff}
+  .row .av svg{width:15px;height:15px}
+  .row.user .av{background:#b7c3d0;color:#2b3540}
+  .bubble{padding:9px 13px;border-radius:14px;line-height:1.5;overflow-wrap:anywhere}
+  .row.bot .bubble{background:#fff;border:1px solid var(--line);border-bottom-left-radius:5px}
+  .row.user .bubble{background:var(--navy);color:#fff;border-bottom-right-radius:5px}
+  .row.bot .bubble strong{color:var(--navy)}
+  .bubble ul{margin:7px 0 0;padding-left:18px}.bubble li{margin:3px 0}
+  .typing{display:flex;gap:4px;padding:3px 2px}
+  .typing span{width:7px;height:7px;border-radius:50%;background:#b6c1cd;animation:tblink 1.2s infinite}
+  .typing span:nth-child(2){animation-delay:.2s}.typing span:nth-child(3){animation-delay:.4s}
+  @keyframes tblink{0%,60%,100%{opacity:.3}30%{opacity:1}}
+  .asst-chips{display:flex;flex-wrap:wrap;gap:7px;padding:2px 14px 6px;background:#f6f8fc}
+  .chip{background:#eaf1fb;border:1px solid #d3e0f2;color:var(--navy);font:inherit;font-size:12px;font-weight:600;padding:6px 11px;border-radius:99px;cursor:pointer}
+  .chip:hover{background:#dbe8fb}
+  .asst-in{display:flex;gap:8px;padding:11px 12px;border-top:1px solid var(--line);background:#fff}
+  .asst-in input{flex:1;font:inherit;padding:10px 12px;border:1px solid var(--line);border-radius:9px}.asst-in input:focus{outline:none;border-color:var(--navy)}
+  /* floating robot */
+  .robot-widget{position:fixed;bottom:20px;right:20px;z-index:1000;width:82px;height:104px;cursor:pointer;transition:transform .3s,opacity .3s;filter:drop-shadow(0 4px 10px rgba(0,0,0,.18));opacity:.9}
+  .robot-widget:hover{transform:scale(1.05);opacity:1}
+  .antenna{position:absolute;top:0;left:50%;transform:translateX(-50%);width:3px;height:14px;background:var(--navy);border-radius:2px}
+  .antenna-tip{position:absolute;top:-8px;left:50%;transform:translateX(-50%);width:11px;height:11px;background:#4a86d6;border-radius:50%;animation:rpulse 2s infinite}
+  @keyframes rpulse{0%,100%{opacity:1}50%{opacity:.5}}
+  .robot-head{position:absolute;top:14px;left:50%;transform:translateX(-50%);width:60px;height:42px;background:var(--navy);border-radius:18px 18px 12px 12px;border:2px solid var(--navy-2)}
+  .head-screen{position:absolute;top:9px;left:50%;transform:translateX(-50%);width:46px;height:20px;background:#fff;border-radius:11px;display:flex;align-items:center;justify-content:center;gap:11px}
+  .eye{width:6px;height:6px;background:#1c9be6;border-radius:50%;animation:rblink 3s infinite}
+  @keyframes rblink{0%,90%,100%{transform:scaleY(1)}95%{transform:scaleY(.1)}}
+  .robot-body{position:absolute;top:42px;left:50%;transform:translateX(-50%);width:70px;height:46px;background:var(--navy);border-radius:12px}
+  .control-panel{position:absolute;top:8px;left:50%;transform:translateX(-50%);display:flex;gap:5px}
+  .control-dot{width:5px;height:5px;background:#fff;border-radius:50%;opacity:.85}
+  .robot-text{position:absolute;top:23px;left:50%;transform:translateX(-50%);color:#fff;font-size:9px;font-weight:700;letter-spacing:.06em}
+  .robot-base{position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:50px;height:16px;background:var(--navy);border-radius:8px}
+  .hover-tooltip{position:absolute;right:94px;bottom:26px;background:#fff;color:var(--ink);padding:10px 14px;border-radius:16px;font-size:13px;font-weight:500;white-space:nowrap;opacity:0;transform:translateX(10px);transition:all .3s;pointer-events:none;box-shadow:0 6px 20px rgba(0,0,0,.15);border:1px solid var(--line)}
+  .hover-tooltip::after{content:'';position:absolute;right:-8px;top:50%;transform:translateY(-50%);border-top:8px solid transparent;border-bottom:8px solid transparent;border-left:8px solid #fff}
+  .robot-widget:hover .hover-tooltip{opacity:1;transform:translateX(0)}
+  @media(max-width:520px){.hover-tooltip{display:none}}
+  /* chat popup shell */
+  .chat-popup{position:fixed;bottom:132px;right:20px;width:min(400px,92vw);height:min(560px,72vh);background:#fff;border-radius:16px;box-shadow:0 14px 44px rgba(0,0,0,.24);z-index:1002;display:flex;flex-direction:column;overflow:hidden;border:1px solid rgba(0,0,0,.08);transform:translateY(16px) scale(.96);opacity:0;pointer-events:none;transition:transform .28s cubic-bezier(.34,1.4,.64,1),opacity .28s}
+  .chat-popup.visible{transform:none;opacity:1;pointer-events:auto}
+  @media(max-width:520px){.chat-popup{right:10px;left:10px;width:auto;bottom:118px;height:70vh}}
+  .asst-x{background:rgba(255,255,255,.14);border:0;color:#eaf1fb;font-size:18px;line-height:1;cursor:pointer;padding:2px 9px;border-radius:8px}
+  .asst-x:hover{background:rgba(255,255,255,.26)}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">Settlement Training <small>practice · internal</small></div>
+  <div class="nav" id="topNav">
+    <button data-go="home" class="on">Home</button>
+    <button data-go="learn">Learn</button>
+    <button data-go="setup">Start</button>
+    <button data-go="create">Create</button>
+    <button data-go="guide">Guide</button>
+  </div>
+</div>
+
+<!-- HOME -->
+<section class="screen on" id="s-home"><div class="wrap"><div class="hero"><div class="bar">Settlement Training</div><div class="in">
+  <h1>Settle events in the real back-office layout.</h1>
+  <p>Each case renders as a full settlement event — postponements, results, player occurrences and bet offers, just like the live tool. Pick a category, choose how many events, and time yourself.</p>
+  <div class="actions">
+    <button class="action" data-go="learn"><div class="ic">ⓘ</div><div class="t">Learn</div><div class="s">New to settlement? Sports basics and how settling works.</div></button>
+    <button class="action" data-go="setup"><div class="ic">▶</div><div class="t">Start</div><div class="s">Category, quantity and speed test, then settle.</div></button>
+    <button class="action" data-go="create"><div class="ic">✎</div><div class="t">Create</div><div class="s">Author events, import/export, and set answers.</div></button>
+  </div>
+  <div class="home-stats" id="homeStats"></div>
+</div></div></div></section>
+
+<!-- SETUP -->
+<section class="screen" id="s-setup"><div class="wrap"><div class="card"><div class="bar">Start</div><div class="in">
+  <div class="field"><label for="setCat">Category</label><select id="setCat"></select></div>
+  <div class="field"><label for="setQty">Number of events</label>
+    <select id="setQty"><option value="1">1</option><option value="3" selected>3</option><option value="5">5</option><option value="0">All</option></select>
+    <div class="hint" id="qtyHint"></div></div>
+  <div class="field"><div class="switch" id="speedSwitch"><span class="toggle" id="speedToggle"></span><label style="margin:0;cursor:pointer">Speed test — time me</label></div>
+    <div class="hint">Shows a running timer and records your total time.</div></div>
+  <div style="display:flex;gap:10px"><button class="btn" id="beginBtn">Begin</button><button class="btn ghost" data-go="home">Cancel</button></div>
+  <div class="err hidden" id="setupErr"></div>
+</div></div></div></section>
+
+<!-- PRACTICE -->
+<section class="screen" id="s-quiz"><div class="cols" id="cols">
+  <div class="list">
+    <div class="list-head"><span>My 0 events</span><span>⌃</span></div>
+    <div class="list-head sub" id="allCount">All events</div>
+    <div id="eList"></div>
+  </div>
+  <div class="detail" id="detail"><div class="detail-empty">Select an event on the left to settle it.</div></div>
+</div></section>
+
+<!-- RESULTS -->
+<section class="screen" id="s-results"><div class="wrap" id="resWrap"></div></section>
+
+<!-- CREATE -->
+<section class="screen" id="s-create"><div class="wrap"><div class="hero"><div class="bar">Create &amp; manage</div><div class="in">
+  <div class="ie-row">
+    <button class="btn ghost" id="exportBtn">⭳ Export events</button>
+    <label class="btn ghost" style="cursor:pointer">⭱ Import events<input type="file" id="importFile" accept="application/json,.json" class="hidden"></label>
+    <span class="msg" id="ieMsg"></span>
+  </div>
+
+  <div class="subhead" style="border-top:0;padding-top:0">Categories</div>
+  <div class="cat-row"><input id="newCat" style="font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:6px;flex:1" placeholder="New category (e.g. Football, Golf)"><button class="btn ghost" id="addCatBtn">Add</button></div>
+  <div id="catList"></div>
+
+  <div class="subhead">New event — build it the way you'll settle it</div>
+  <div class="row2">
+    <div class="field"><label>Event name</label><input id="e-name" placeholder="e.g. Northgate BK - Rivertown"></div>
+    <div class="field"><label>Sport</label><select id="e-sport"><option value="football">Football</option><option value="golf">Golf</option></select></div>
+  </div>
+  <div class="row2">
+    <div class="field"><label>Date / time</label><input id="e-time" placeholder="e.g. 07 Aug 17:59"></div>
+    <div class="field"><label>Event ID (fake)</label><input id="e-id" placeholder="e.g. 1026051119"></div>
+  </div>
+  <div class="row2">
+    <div class="field"><label>Category</label><select id="e-cat"></select></div>
+    <div class="field"><label>Breadcrumb (country - competition)</label><input id="e-bc" placeholder="e.g. Finland - Veikkausliiga"></div>
+  </div>
+
+  <!-- The builder below mirrors the settlement event page -->
+  <div class="builder-wrap" style="border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-top:6px">
+    <!-- FOOTBALL -->
+    <div id="fbAuth">
+      <div class="section collapsed"><div class="sec-head">Postponements <span class="chev">⌃</span></div><div class="sec-body"><div class="pp">
+        <div class="pp-row"><span>Entire Event postponed (answer)</span><input type="checkbox" id="e-postpone"></div>
+        <div class="hint" style="grid-column:1/-1">Tick if the correct settlement is to postpone the whole event.</div>
+      </div></div></div>
+      <div class="section"><div class="sec-head">Results — enter correct scores <span class="chev">⌃</span></div><div class="sec-body">
+        <table class="res"><thead><tr><th class="lbl">&nbsp;</th><th>Home goals</th><th>Away goals</th><th>Home corners</th><th>Away corners</th></tr></thead><tbody>
+          <tr><td class="lbl"><span class="hh">First half</span></td><td><input class="sc-input" id="r-fh-hg" inputmode="numeric"></td><td><input class="sc-input" id="r-fh-ag" inputmode="numeric"></td><td></td><td></td></tr>
+          <tr><td class="lbl">Full Time</td><td><input class="sc-input" id="r-ft-hg" inputmode="numeric"></td><td><input class="sc-input" id="r-ft-ag" inputmode="numeric"></td><td><input class="sc-input" id="r-ft-hc" inputmode="numeric"></td><td><input class="sc-input" id="r-ft-ac" inputmode="numeric"></td></tr>
+        </tbody></table>
+      </div></div>
+      <div class="section"><div class="sec-head">Player Occurrences - Full Time <span class="chev">⌃</span></div><div class="sec-body"><div class="occ">
+        <div class="occ-team">
+          <div class="occ-teamhead"><input id="oc-home-team" placeholder="Home team" style="font:inherit;font-weight:600;border:1px solid var(--line);border-radius:6px;padding:5px 8px;width:100%"></div>
+          <div id="ocHome"></div>
+          <div style="padding:8px 12px"><button class="addlink" data-add-oc="home">+ Add player</button></div>
+        </div>
+        <div class="occ-mid">
+          <div style="font-weight:600;margin-bottom:8px">Correct occurrences</div>
+          <div id="occAuth"></div>
+          <button class="addlink" id="addOcc">+ Add occurrence</button>
+        </div>
+        <div class="occ-team">
+          <div class="occ-teamhead"><input id="oc-away-team" placeholder="Away team" style="font:inherit;font-weight:600;border:1px solid var(--line);border-radius:6px;padding:5px 8px;width:100%"></div>
+          <div id="ocAway"></div>
+          <div style="padding:8px 12px"><button class="addlink" data-add-oc="away">+ Add player</button></div>
+        </div>
+      </div></div></div>
+    </div>
+
+    <!-- GOLF -->
+    <div id="golfAuth">
+      <div class="section"><div class="sec-head">Position Results - GOLF.EVENT - STROKES <span class="chev">⌃</span></div><div class="sec-body">
+        <div style="padding:10px 14px">Top columns (comma-separated, any values): <input id="e-tops" value="5, 10" style="font:inherit;padding:6px 9px;border:1px solid var(--line);border-radius:6px;width:170px"></div>
+        <div style="padding:0 14px"><div style="display:grid;grid-template-columns:1fr 90px auto;gap:8px;font-weight:600;color:var(--ink-2);padding:6px 0;border-bottom:1px solid var(--line)"><span>Participant</span><span>Placement</span><span></span></div><div id="plAuth" style="padding-top:8px"></div></div>
+        <div style="padding:8px 14px"><button class="addlink" id="addPl">+ Add participant</button></div>
+      </div></div>
+    </div>
+
+    <!-- BET OFFERS (both) -->
+    <div class="section"><div class="sec-head">Bet Offers — tick the winner or Void <span class="chev">⌃</span></div><div class="sec-body">
+      <div id="offersAuth" style="padding:8px 14px"></div>
+      <div style="padding:0 14px 12px"><button class="addlink" id="addOffer">+ Add offer</button></div>
+    </div></div>
+  </div>
+
+  <div style="display:flex;gap:10px;align-items:center;margin-top:16px">
+    <button class="btn" id="saveEventBtn">Save event</button>
+    <button class="btn ghost" id="clearEventBtn">Clear</button>
+    <span class="msg" id="createMsg"></span>
+  </div>
+  <div class="subhead">Existing events</div><div id="eventList"></div>
+</div></div></div></section>
+
+
+<!-- LEARN -->
+<section class="screen" id="s-learn"><div class="wrap"><div class="hero"><div class="bar">Learn — settlement &amp; sports</div><div class="in learn">
+  <p class="tagline">New to settlement? Read this once to get your bearings — what settling actually means, and the sports you'll see — then head to <b>Start</b> for a practice quiz. These are general concepts to orient you; always follow Kambi's official settlement rules for the exact wording and edge cases.</p>
+
+  <div class="section"><div class="sec-head">What settlement means <span class="chev">⌃</span></div><div class="sec-body">
+    <p>Settlement is <b>resolving bets after an event has been played</b>. Once the official result is known, every bet offer on the event is marked so that winning bets pay out and losing bets don't.</p>
+    <p>Your job is to read the result from a trusted source and apply it correctly to each market. <b>Accuracy matters more than speed</b> — a wrong settlement pays the wrong people, and correcting it afterwards is costly.</p>
+  </div></div>
+
+  <div class="section"><div class="sec-head">The outcomes you'll apply <span class="chev">⌃</span></div><div class="sec-body">
+    <ul>
+      <li><b>Winner</b> — the outcome that actually happened. Bets on it win; bets on the other outcomes lose.</li>
+      <li><b>Void</b> — the offer is cancelled and stakes are returned. Used when a market can't stand (event abandoned, or a required participant doesn't take part).</li>
+      <li><b>No result</b> — the market has no valid result to settle against. It's <b>not</b> the same as void; apply it only where the market's rules call for it.</li>
+      <li><b>Postponed</b> — the event didn't take place as scheduled. Depending on the rules, bets either stand until it's replayed or are voided.</li>
+    </ul>
+  </div></div>
+
+  <div class="section"><div class="sec-head">How an event page is laid out <span class="chev">⌃</span></div><div class="sec-body">
+    <p>Every event you settle in this tool has the same sections — the same ones you'll practise on:</p>
+    <ul>
+      <li><b>Postponements</b> — mark here if the whole event is called off.</li>
+      <li><b>Results</b> — the figures the markets settle from (e.g. goals and corners, first half and full time).</li>
+      <li><b>Player Occurrences</b> — the starting line-ups plus events like goals, substitutions and own goals.</li>
+      <li><b>Bet Offers</b> — the individual markets; tick the winning outcome, or Void, or No result.</li>
+    </ul>
+  </div></div>
+
+  <div class="section"><div class="sec-head">Football <span class="chev">⌃</span></div><div class="sec-body">
+    <div class="sub">The game</div>
+    <p>Football (soccer) is played between two teams of eleven over two halves of 45 minutes plus added time. A goal is scored when the whole ball crosses the line into the net; the team with more goals wins, and a level score is a draw. Players line up as a goalkeeper, defenders, midfielders and forwards, and each side can make a limited number of substitutions. Other things that get recorded and bet on include corners, yellow and red cards, penalties and own goals. In knockout formats a draw can go to extra time and then a penalty shoot-out.</p>
+    <div class="sub">Settling it</div>
+    <p>Common markets: <b>1X2</b> (Home / Draw / Away), Double Chance, Both Teams To Score, Over/Under goals, corners, correct score, and half-specific versions.</p>
+    <p><b>Periods matter.</b> A "1st Half" market settles on the <b>half-time</b> score, not full time — one of the easiest mistakes to make.</p>
+    <p><b>Player occurrences</b> track goals, substitutions and own goals per player. An <b>own goal counts for the opposing team</b> — it adds to their score, not the scorer's, which is why in this tool an own goal shows on the other team's side.</p>
+    <p>Watch for: settling the wrong period, and putting an own goal on the wrong side.</p>
+  </div></div>
+
+  <div class="section"><div class="sec-head">Golf <span class="chev">⌃</span></div><div class="sec-body">
+    <div class="sub">The game</div>
+    <p>Golf is an individual sport: each player tries to get the ball into a series of holes — usually 18 per round — in as few strokes as possible. A professional tournament is normally four rounds played over four days, and the player with the <b>lowest total strokes</b> wins, so it's a whole field competing rather than two sides head-to-head. Every hole has a <b>par</b> (the expected number of strokes); one under par is a birdie, two under an eagle, and one over a bogey. After two rounds a <b>cut</b> often removes the lower-ranked players, and a live leaderboard shows everyone's position.</p>
+    <div class="sub">Settling it</div>
+    <p>Most tournaments are <b>stroke play</b> — the lowest total strokes wins, and a player's <b>placement</b> is their finishing position.</p>
+    <p>Common markets: outright winner, <b>Top 5 / Top 10 / Top 20</b> finishes, each-way, and <b>matchups</b> (two or three players — whoever finishes higher).</p>
+    <p><b>Ties</b> are the tricky part. Some matchups are <b>Tie No Bet</b> (stake returned if players finish level). Outright and top-N markets often use <b>dead-heat</b> rules, where the payout is divided when players tie for a place. Players who miss the cut or withdraw are settled per the market's rules.</p>
+    <p>Watch for: dead-heat situations and tie handling on matchups.</p>
+  </div></div>
+
+  <div class="section"><div class="sec-head">More sports (quick intros) <span class="chev">⌃</span></div><div class="sec-body">
+    <p>You'll mostly settle football and golf here, but the same ideas carry across sports. Quick "how it's played" primers:</p>
+    <ul>
+      <li><b>Tennis</b> — one player (or pair) versus another, hitting a ball over a net into the opponent's court; scoring builds points → games → sets → match. Retirements and walkovers have their own void rules.</li>
+      <li><b>Basketball</b> — two teams of five score by shooting into a hoop (2 or 3 points, 1 for a free throw); highest score wins. Check whether a market includes overtime.</li>
+      <li><b>Baseball</b> — two teams alternate batting and fielding over nine innings; runs are scored by completing the bases. Rain and extra innings can affect settlement.</li>
+      <li><b>Ice hockey</b> — two teams put a puck into the net over three periods; a tie may go to overtime or a shoot-out depending on the competition.</li>
+      <li><b>Cricket</b> — two teams take turns batting and bowling, scoring runs against wickets; formats range from a few hours (T20) to multi-day Tests, which changes how markets settle.</li>
+      <li><b>American football</b> — two teams of eleven advance an oval ball to score touchdowns (6) and field goals (3) over four quarters; overtime rules vary by competition.</li>
+    </ul>
+    <p>These are orientation only — always settle to the specific market's rules.</p>
+  </div></div>
+
+  <div class="section"><div class="sec-head">Common pitfalls <span class="chev">⌃</span></div><div class="sec-body">
+    <ul>
+      <li>Confirm the <b>event and date</b> — kick-off times and time zones cause mix-ups.</li>
+      <li>Settling the <b>wrong period</b> (half vs full time).</li>
+      <li>Crediting an <b>own goal to the wrong team</b>.</li>
+      <li>Confusing <b>Void</b> with <b>No result</b> — they behave differently.</li>
+      <li><b>Dead heats and ties</b>, especially in golf and matchups.</li>
+    </ul>
+  </div></div>
+
+  <div class="note">This primer covers general concepts to get you oriented. The exact rules for void, no result, dead heats and postponements vary by market and are defined by Kambi's official settlement rules — always defer to those.</div>
+
+  <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap"><button class="btn" data-go="setup">Start a practice quiz</button><button class="btn ghost" data-go="guide">How to use this app</button></div>
+</div></div></div></section>
+
+<!-- GUIDE -->
+<section class="screen" id="s-guide"><div class="wrap"><div class="hero"><div class="bar">Guide</div><div class="in guide">
+  <h3>What this is</h3>
+  <p>A training replica of the settlement back-office. You settle practice events, then see where you went right or wrong. All data is sample data. New to settlement? Read the <b>Learn</b> tab first for a sports and settlement primer.</p>
+  <h3>Settling an event</h3>
+  <ul>
+    <li><b>Postponements</b> — if the whole event is called off, tick <b>Entire Event</b> and SAVE. That postpones everything and closes the event; you skip the rest.</li>
+    <li><b>Results</b> — type the goals and corners for First half and Full Time.</li>
+    <li><b>Player Occurrences</b> — tick the starting XI for each team, then log any goals, substitutions and own goals. Tick both “log complete” boxes when done.</li>
+    <li><b>Bet Offers</b> — tick the winning outcome, or the single <b>Void</b> box, then SAVE. Settled offers disappear. Use <b>Settled</b> to review ones you’ve done, and the search box to find an offer.</li>
+  </ul>
+  <p>An event only closes once <b>every</b> section is answered. When all events are done, your Results appear automatically.</p>
+  <h3>Creating events</h3>
+  <p>In Create, build an event and set its correct answers — that answer key is what your settlement is graded against. Use <b>Export</b>/<b>Import</b> to move events between machines.</p>
+</div></div></div></section>
+
+<!-- Floating assistant robot -->
+<div class="robot-widget" id="robotWidget" title="Open Settlement Assistant" role="button" aria-label="Open Settlement Assistant" tabindex="0">
+  <div class="antenna"><div class="antenna-tip"></div></div>
+  <div class="robot-head"><div class="head-screen"><div class="eye"></div><div class="eye"></div></div></div>
+  <div class="robot-body"><div class="control-panel"><div class="control-dot"></div><div class="control-dot"></div><div class="control-dot"></div></div><div class="robot-text">FAQ</div></div>
+  <div class="robot-base"></div>
+  <div class="hover-tooltip">Hi! I'm your Settlement Assistant. Click me for help.</div>
+</div>
+<div class="chat-popup" id="chatPopup" role="dialog" aria-modal="true" aria-hidden="true" aria-label="Settlement Assistant">
+  <div class="asst-head">
+    <div class="asst-id"><span class="asst-ava" id="asstAva"></span><div><div class="asst-title">Settlement Assistant</div><div class="asst-sub">FAQ · instant answers</div></div></div>
+    <div style="display:flex;gap:6px"><button class="asst-clear" id="asstClear">Clear</button><button class="asst-x" id="asstClose" aria-label="Close">×</button></div>
+  </div>
+  <div class="asst-msgs" id="asstMsgs"></div>
+  <div class="asst-chips" id="asstChips"></div>
+  <div class="asst-in"><input id="asstInput" placeholder="Ask how the app works…" autocomplete="off"><button class="btn" id="asstSend">Send</button></div>
+</div>
+
+<script>
+(function(){
+"use strict";
+var store=(function(){var mem={},ok=false;try{var k="__t";localStorage.setItem(k,"1");localStorage.removeItem(k);ok=true;}catch(e){ok=false;}
+  return{ok:ok,get:function(x){try{return ok?localStorage.getItem(x):(mem[x]||null);}catch(e){return mem[x]||null;}},
+    set:function(x,v){try{ok?localStorage.setItem(x,v):(mem[x]=v);}catch(e){mem[x]=v;}}};})();
+function jget(k,d){try{var r=store.get(k);return r?JSON.parse(r):d;}catch(e){return d;}}
+function jset(k,v){store.set(k,JSON.stringify(v));}
+function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
+function shuffle(a){a=a.slice();for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t;}return a;}
+
+var SEED_CATS=["Football","Golf"];
+var SEED=[
+  { id:"1026051119", time:"07 Aug 17:59", name:"SJK Sample - Gnistan Sample", sport:"football", category:"Football", bc:"Finland - Sample League", postponeAns:false,
+    results:{fh:{hg:0,ag:0},ft:{hg:1,ag:1,hc:4,ac:3}},
+    occurrence:{ home:{team:"SJK Sample",players:[["A. Keeper",true],["B. Back",true],["C. Mid",true],["D. Wing",false]]},
+                 away:{team:"Gnistan Sample",players:[["F. Keeper",true],["G. Back",true],["H. Striker",true],["I. Sub",false]]},
+                 events:[{side:"home",player:"C. Mid",type:"Goal"},{side:"away",player:"H. Striker",type:"Goal"},{side:"home",player:"D. Wing",type:"Substitution"}]},
+    offers:[
+      { m1:"Full Time - 1X2", betType:"1 x 2", ref:"2677085677", outcomes:["SJK Sample","X","Gnistan Sample"], win:[1], voidAns:false },
+      { m1:"Both Teams To Score", betType:"Yes / No", ref:"2677125717", outcomes:["Yes","No"], win:[0], voidAns:false },
+      { m1:"Player Sent Off - Match", betType:"Yes / No", ref:"2677130055", outcomes:["Yes","No"], win:[], voidAns:false, noResultAns:true }
+    ]},
+  { id:"1028000002", time:"06 Aug 07:30", name:"PIF Sample Championship 2026", sport:"golf", category:"Golf", bc:"Sample Ladies Tour - Sample Championship", topCols:[5,10], postponeAns:false,
+    participants:[["Aditi Sample",1],["Agatha Practice",2],["Alessia Trainee (a)",3],["Alice Example",4],["Amy Demo",5],["Anna Placeholder",8]],
+    offers:[
+      { m1:"Best score - Round 1", betType:"1 x 2", ref:"2676758466", outcomes:["1","X","2"], win:[0], voidAns:false },
+      { m1:"Best score - Round 1 (Tie No Bet)", betType:"1 x 2", ref:"2676758471", outcomes:["1","2"], win:[], voidAns:true }
+    ]}
+];
+var categories=jget("categories",null)||SEED_CATS.slice(); jset("categories",categories);
+var events=jget("stEvents",null)||SEED.slice(); jset("stEvents",events);
+var history=jget("stHistory",[]);
+var OCC_TYPES=["Goal","Substitution","Own Goal"];
+var OCC_MENU=[["Goal","Goal"],["Substitution","Substitution"],["Own goal","Own Goal"]];
+
+/* nav */
+var screens=["home","setup","quiz","results","create","learn","guide"];
+function show(name){
+  screens.forEach(function(s){document.getElementById("s-"+s).classList.toggle("on",s===name);});
+  document.querySelectorAll("#topNav button").forEach(function(b){b.classList.toggle("on",b.dataset.go===name||(name==="results"&&b.dataset.go==="setup"));});
+  if(name==="home")renderHome();if(name==="setup")renderSetup();if(name==="create")renderCreate();
+  if(name!=="quiz")stopTimer();
+}
+document.addEventListener("click",function(e){var t=e.target.closest("[data-go]");if(t)show(t.dataset.go);});
+function catEvents(cat){return events.filter(function(e){return cat==="__all"||e.category===cat;});}
+function renderHome(){var last=history[history.length-1];
+  var s='<span><b>'+events.length+'</b> events</span><span><b>'+categories.length+'</b> categories</span>';
+  if(last)s+='<span>Last: <b>'+last.score+'/'+last.total+'</b>'+(last.timeSec!=null?(' · '+fmt(last.timeSec)):'')+'</span>';
+  document.getElementById("homeStats").innerHTML=s;}
+function renderSetup(){document.getElementById("setCat").innerHTML='<option value="__all">All categories</option>'+categories.map(function(c){return '<option>'+esc(c)+'</option>';}).join("");qtyHint();document.getElementById("setupErr").classList.add("hidden");}
+document.getElementById("setCat").addEventListener("change",qtyHint);
+function qtyHint(){var n=catEvents(document.getElementById("setCat").value).length;document.getElementById("qtyHint").textContent=n+" event"+(n===1?"":"s")+" available.";}
+var speedOn=false;
+document.getElementById("speedSwitch").addEventListener("click",function(){speedOn=!speedOn;document.getElementById("speedToggle").classList.toggle("on",speedOn);});
+document.getElementById("beginBtn").addEventListener("click",function(){
+  var cat=document.getElementById("setCat").value,qty=parseInt(document.getElementById("setQty").value,10);
+  var pool=catEvents(cat);if(!pool.length){var e=document.getElementById("setupErr");e.textContent="No events here yet. Create one first.";e.classList.remove("hidden");return;}
+  pool=shuffle(pool);if(qty>0)pool=pool.slice(0,qty);startSession(pool,cat,speedOn);
+});
+
+/* session */
+var session=null,timer=null;
+function newResp(){return {placements:{},results:{},offers:{},postponed:false,occ:{starters:{},starterLog:false,occLog:false,events:[]}};}
+function startSession(evs,cat,speed){
+  session={events:evs,cat:cat,speed:speed,idx:-1,startTs:Date.now(),timeSec:0,resp:evs.map(newResp)};
+  show("quiz");renderEList();
+  document.getElementById("detail").innerHTML='<div class="detail-empty">Select an event on the left to settle it.</div>';
+  if(speed)startTimer();
+}
+function fmt(sec){var m=Math.floor(sec/60),s=sec%60;return (m<10?"0":"")+m+":"+(s<10?"0":"")+s;}
+function startTimer(){stopTimer();timer=setInterval(function(){session.timeSec=Math.floor((Date.now()-session.startTs)/1000);var el=document.getElementById("evTimer");if(el)el.textContent=fmt(session.timeSec);},1000);}
+function stopTimer(){if(timer){clearInterval(timer);timer=null;}}
+
+var detail=document.getElementById("detail"),cols=document.getElementById("cols");
+
+function resultsAllFilled(e,r){
+  if(!e.results)return true;var ok=true;
+  ["fh.hg","fh.ag","ft.hg","ft.ag","ft.hc","ft.ac"].forEach(function(k){var p=k.split("."),w=e.results[p[0]]&&e.results[p[0]][p[1]];if(w!=null&&w!==""){if((r.results[k]||"").trim()==="")ok=false;}});
+  return ok;
+}
+function eventComplete(i){
+  var e=session.events[i],r=session.resp[i];
+  if(r.postponed)return true;
+  if(!(e.offers||[]).every(function(_,oi){return r.offers[oi]!==undefined;}))return false;
+  if(e.sport==="golf")return (e.participants||[]).every(function(p,idx){return (r.placements[idx]||"").trim()!=="";});
+  if(!resultsAllFilled(e,r))return false;
+  if(e.occurrence && !r.occ.occLog)return false;
+  return true;
+}
+function firstIncomplete(){for(var k=0;k<session.events.length;k++){if(!eventComplete(k))return k;}return -1;}
+
+function renderEList(){
+  var el=document.getElementById("eList");el.innerHTML="";var remaining=0;
+  session.events.forEach(function(e,i){
+    if(eventComplete(i))return;remaining++;
+    var row=document.createElement("div");row.className="elist-row"+(i===session.idx?" sel":"");row.dataset.i=i;
+    row.innerHTML='<span class="add">+</span><span class="nm"><span class="tm">'+esc(e.time||"")+'</span>'+esc(e.name)+' <span class="idr">('+esc(e.id||"—")+')</span></span><span class="turn">€0</span>';
+    row.addEventListener("click",function(){captureInputs();openEvent(i);});el.appendChild(row);
+  });
+  document.getElementById("allCount").textContent="All "+remaining+" events";
+  if(!remaining)el.innerHTML='<div class="empty">All events settled.</div>';
+}
+
+function openEvent(i){
+  session.idx=i;var e=session.events[i];
+  document.querySelectorAll(".elist-row").forEach(function(r){r.classList.toggle("sel",+r.dataset.i===i);});
+  var head='<div class="ev-head"><div class="r1"><span class="nav">&lt;&lt;&lt;</span> '+
+    '<span class="time">'+esc(e.time||"")+'</span> <span class="ttl">'+esc(e.name)+'</span> <span class="id">('+esc(e.id||"—")+')</span>'+
+    (session.speed?'<span class="timer" id="evTimer">'+fmt(session.timeSec)+'</span>':'')+
+    '<span class="close" title="Close">✕</span></div>'+
+    '<div class="bc">'+esc((e.sport==="golf"?"Golf":"Football")+' - '+(e.bc||"Sample"))+'</div></div>';
+  var body="";
+  if(e.sport==="golf"){ body+=golfPos(e); }
+  else { body+=postponements(e); body+=fbResults(e); if(e.occurrence)body+=occurrences(e,i); }
+  body+=betOffers(e,i);
+  body+='<div class="actionbar"><button class="btn" id="saveBtn">SAVE</button></div>';
+  detail.innerHTML=head+body;cols.classList.add("showing");
+  hydrate(i);wire(i);applyOfferFilters(i);
+}
+
+function postponements(e){
+  return '<div class="section collapsed" data-sec="postpone"><div class="sec-head">Postponements <span class="chev">⌃</span></div><div class="sec-body"><div class="pp">'+
+    '<div class="pp-row"><span>Period</span><select class="pp-period"><option>Not Postponed</option><option>Postponed</option></select></div>'+
+    '<div class="pp-row"><span>Entire Event</span><input type="checkbox" class="pp-entire"></div></div></div></div>';
+}
+function fbResults(e){
+  return '<div class="section" data-sec="results"><div class="sec-head">Results <span class="chev">⌃</span></div><div class="sec-body">'+
+    '<table class="res"><thead><tr><th class="lbl">&nbsp;</th><th>Home goals</th><th>Away goals</th><th>Home corners</th><th>Away corners</th></tr></thead><tbody>'+
+    '<tr><td class="lbl"><span class="hh">First half</span></td><td><input class="sc-input" data-r="fh.hg" inputmode="numeric"></td><td><input class="sc-input" data-r="fh.ag" inputmode="numeric"></td><td></td><td></td></tr>'+
+    '<tr><td class="lbl">Full Time</td><td><input class="sc-input" data-r="ft.hg" inputmode="numeric"></td><td><input class="sc-input" data-r="ft.ag" inputmode="numeric"></td><td><input class="sc-input" data-r="ft.hc" inputmode="numeric"></td><td><input class="sc-input" data-r="ft.ac" inputmode="numeric"></td></tr>'+
+    '</tbody></table></div></div>';
+}
+function occurrences(e,i){
+  function teamCol(side,data){
+    var players=data.players.map(function(p,idx){return '<li class="occ-p"><input type="checkbox" class="starter" data-side="'+side+'" data-pi="'+idx+'"><span class="occ-name" data-side="'+side+'" data-player="'+esc(p[0])+'">'+esc(p[0])+'</span></li>';}).join("");
+    return '<div class="occ-team"><div class="occ-tname">'+esc(data.team)+'</div>'+
+      '<label class="occ-starter-all"><input type="checkbox" class="starter-all" data-side="'+side+'"> Starter</label>'+
+      '<div class="occ-unlisted">Unlisted Player</div>'+
+      '<ul class="occ-players">'+players+'</ul></div>';
+  }
+  var mid='<div class="occ-mid"><div class="logs"><label><input type="checkbox" class="starterlog"> Starter log complete</label><label><input type="checkbox" class="occlog"> Occurrence log complete</label></div>'+
+    '<div class="occ-events" id="occList"></div>'+
+    '<div class="occ-tally" id="occCounts"></div></div>';
+  return '<div class="section" data-sec="occ"><div class="sec-head">Player Occurrences - Full Time <span class="chev">⌃</span></div><div class="sec-body"><div class="occ">'+
+    teamCol("home",e.occurrence.home)+mid+teamCol("away",e.occurrence.away)+'</div></div></div>';
+}
+function golfPos(e){
+  var tops=e.topCols||[];
+  var ths='<th>Participant ▾</th><th>Placement</th>'+tops.map(function(t){return '<th>Top '+t+'</th>';}).join("");
+  var rows=(e.participants||[]).map(function(p,idx){return '<tr><td>'+esc(p[0])+'</td><td><input class="plc-input" data-plc="'+idx+'" inputmode="numeric"></td>'+tops.map(function(){return '<td></td>';}).join("")+'</tr>';}).join("");
+  return '<div class="section" data-sec="pos"><div class="sec-head">Position Results - GOLF.EVENT - STROKES <span class="chev">⌃</span></div><div class="sec-body"><table class="pos"><thead><tr>'+ths+'</tr></thead><tbody>'+rows+'</tbody></table></div></div>';
+}
+function offersInner(e,i){
+  var r=session.resp[i];
+  var tools='<div class="bo-tools"><span class="h-out">Outcomes</span><span class="h-void">Void</span>'+
+    '<span class="h-right"><span class="desc">Description:</span> <input class="search" placeholder="Search">'+
+    '<span class="filters"><label><input type="checkbox" class="f-explicit" checked> Explicit</label><label><input type="checkbox" class="f-settled"> Settled</label><label><input type="checkbox" class="f-futures"> Futures</label></span>'+
+    '<span class="noent">⊘</span></span></div>';
+  var rows=(e.offers||[]).map(function(o,oi){
+    var s=r.offers[oi];
+    var outs=o.outcomes.map(function(nm,ci){
+      var ck=s&&s.wins.indexOf(ci)>-1?" checked":"",di=s?" disabled":"";
+      return '<label class="oc"><input type="checkbox" class="win" data-oi="'+oi+'" data-ci="'+ci+'"'+ck+di+'> '+esc(nm)+'</label>';}).join("");
+    var vck=s&&s.voided?" checked":"",vdi=s?" disabled":"";
+    var right=s?'<button class="resettle" data-oi="'+oi+'" title="Resettle this offer">🗑</button>':'<button class="noent nr-btn" data-oi="'+oi+'" title="No result (no answer)">⊘</button>';
+    var nrLabel=s&&s.noResult?'<div class="nr-label">No result</div>':'';
+    return '<div class="offer'+(s?' is-settled':'')+'" data-oi="'+oi+'"><div class="outs">'+outs+'</div>'+
+      '<div class="void-col"><input type="checkbox" class="vd" data-oi="'+oi+'"'+vck+vdi+' title="Void whole offer"></div>'+
+      '<div class="mkt"><div class="m1">'+esc(o.m1)+'</div><div class="m2">'+esc(o.betType||"1 x 2")+' ('+esc(o.ref||"")+')</div>'+nrLabel+'</div>'+right+'</div>';
+  }).join("");
+  return tools+rows;
+}
+function betOffers(e,i){
+  return '<div class="section" data-sec="offers"><div class="sec-head">Bet Offers <span class="chev">⌃</span></div><div class="sec-body" id="offersBody">'+offersInner(e,i)+'</div></div>';
+}
+
+function hydrate(i){
+  var e=session.events[i],r=session.resp[i];
+  detail.querySelectorAll(".plc-input").forEach(function(inp){if(r.placements[inp.dataset.plc]!=null)inp.value=r.placements[inp.dataset.plc];});
+  detail.querySelectorAll(".sc-input").forEach(function(inp){if(r.results[inp.dataset.r]!=null)inp.value=r.results[inp.dataset.r];});
+  var pe=detail.querySelector(".pp-entire");if(pe)pe.checked=!!r.postponed;
+  var pp=detail.querySelector(".pp-period");if(pp&&r.postponed)pp.value="Postponed";
+  if(e.occurrence){
+    detail.querySelectorAll(".starter").forEach(function(cb){if(r.occ.starters[cb.dataset.side+":"+cb.dataset.pi])cb.checked=true;});
+    var sl=detail.querySelector(".starterlog");if(sl)sl.checked=!!r.occ.starterLog;
+    var ol=detail.querySelector(".occlog");if(ol)ol.checked=!!r.occ.occLog;
+    renderOccArea(i);
+  }
+}
+function captureInputs(){
+  if(!session||session.idx<0)return;var i=session.idx,r=session.resp[i];if(!detail)return;
+  detail.querySelectorAll(".plc-input").forEach(function(inp){r.placements[inp.dataset.plc]=inp.value.trim();});
+  detail.querySelectorAll(".sc-input").forEach(function(inp){r.results[inp.dataset.r]=inp.value.trim();});
+  var pe=detail.querySelector(".pp-entire");if(pe)r.postponed=pe.checked;
+  detail.querySelectorAll(".starter").forEach(function(cb){r.occ.starters[cb.dataset.side+":"+cb.dataset.pi]=cb.checked;});
+  var sl=detail.querySelector(".starterlog");if(sl)r.occ.starterLog=sl.checked;
+  var ol=detail.querySelector(".occlog");if(ol)r.occ.occLog=ol.checked;
+}
+function occCredit(ev){return ev.type==="Own Goal"?(ev.side==="home"?"away":"home"):ev.side;}
+function renderOccArea(i){
+  var e=session.events[i],r=session.resp[i],list=detail.querySelector("#occList"),counts=detail.querySelector("#occCounts");if(!list)return;
+  list.innerHTML=r.occ.events.map(function(ev,k){
+    var c=occCredit(ev),cls=ev.type.replace(" ",""),label=ev.type==="Own Goal"?"Goal (own)":ev.type;
+    var pill='<span class="tag '+cls+'">'+esc(label)+' <button class="x" data-k="'+k+'" title="Remove">✕</button></span>';
+    var name='<span class="ev-name">'+esc(ev.player)+'</span>';
+    return '<div class="occ-ev '+(c==="home"?"credit-home":"credit-away")+'">'+(c==="home"?(pill+name):(name+pill))+'</div>';
+  }).join("");
+  list.querySelectorAll(".x").forEach(function(b){b.addEventListener("click",function(ev){ev.stopPropagation();r.occ.events.splice(+b.dataset.k,1);renderOccArea(i);});});
+  var gH=0,gA=0,sH=0,sA=0;
+  r.occ.events.forEach(function(ev){var c=occCredit(ev);if(ev.type==="Substitution"){if(ev.side==="home")sH++;else sA++;}else{if(c==="home")gH++;else gA++;}});
+  counts.innerHTML='<div class="tally-line"><span class="n">'+gH+'</span><span class="tl">Goals</span><span class="n">'+gA+'</span></div>'+
+    '<div class="tally-line"><span class="n">'+sH+'</span><span class="tl">Substitutions</span><span class="n">'+sA+'</span></div>';
+}
+function closeOccMenu(){var m=document.getElementById("occMenu");if(m)m.remove();}
+function openOccMenu(anchor,side,player,i){
+  closeOccMenu();var rect=anchor.getBoundingClientRect();
+  var m=document.createElement("div");m.id="occMenu";m.className="occ-menu";
+  m.style.left=Math.round(rect.left)+"px";m.style.top=Math.round(rect.bottom+3)+"px";
+  var head=document.createElement("div");head.className="occ-menu-head";head.textContent=player;m.appendChild(head);
+  OCC_MENU.forEach(function(pair){var it=document.createElement("div");it.className="occ-menu-item";it.textContent=pair[0];it.addEventListener("click",function(ev){ev.stopPropagation();session.resp[i].occ.events.push({side:side,player:player,type:pair[1]});renderOccArea(i);closeOccMenu();});m.appendChild(it);});
+  document.body.appendChild(m);
+}
+function collapseCompleted(i){
+  var e=session.events[i],r=session.resp[i];
+  function col(sec){var el=detail.querySelector('.section[data-sec="'+sec+'"]');if(el)el.classList.add("collapsed");}
+  if(e.sport==="golf"){ if((e.participants||[]).length&&(e.participants||[]).every(function(p,idx){return (r.placements[idx]||"").trim()!=="";})) col("pos"); }
+  else { if(e.results&&resultsAllFilled(e,r)) col("results"); if(e.occurrence&&r.occ.starterLog&&r.occ.occLog) col("occ"); }
+  if((e.offers||[]).length&&(e.offers||[]).every(function(_,oi){return r.offers[oi]!==undefined;})) col("offers");
+}
+function applyOfferFilters(i){
+  var r=session.resp[i];var s=detail.querySelector(".search"),q=s?s.value.toLowerCase():"";
+  var exp=detail.querySelector(".f-explicit"),set=detail.querySelector(".f-settled");
+  var expOn=exp?exp.checked:true,setOn=set?set.checked:false;
+  detail.querySelectorAll(".offer").forEach(function(off){
+    var oi=off.dataset.oi,settled=r.offers[oi]!==undefined;
+    var m1=off.querySelector(".m1"),m2=off.querySelector(".m2");
+    var text=((m1?m1.textContent:"")+" "+(m2?m2.textContent:"")).toLowerCase();
+    var matches=!q||text.indexOf(q)>-1,state=(expOn&&!settled)||(setOn&&settled);
+    off.style.display=(matches&&state)?"":"none";
+  });
+}
+function wireOffers(i){
+  var e=session.events[i],r=session.resp[i];
+  detail.querySelectorAll(".vd").forEach(function(vd){vd.addEventListener("change",function(){if(vd.checked){detail.querySelectorAll('.win[data-oi="'+vd.dataset.oi+'"]').forEach(function(w){w.checked=false;});var nb=detail.querySelector('.nr-btn[data-oi="'+vd.dataset.oi+'"]');if(nb)nb.classList.remove("nr-on");}});});
+  detail.querySelectorAll(".win").forEach(function(w){w.addEventListener("change",function(){if(w.checked){var vd=detail.querySelector('.vd[data-oi="'+w.dataset.oi+'"]');if(vd)vd.checked=false;var nb=detail.querySelector('.nr-btn[data-oi="'+w.dataset.oi+'"]');if(nb)nb.classList.remove("nr-on");}});});
+  detail.querySelectorAll(".nr-btn").forEach(function(nb){nb.addEventListener("click",function(){nb.classList.toggle("nr-on");if(nb.classList.contains("nr-on")){var oi=nb.dataset.oi;detail.querySelectorAll('.win[data-oi="'+oi+'"]').forEach(function(w){w.checked=false;});var vd=detail.querySelector('.vd[data-oi="'+oi+'"]');if(vd)vd.checked=false;}});});
+  detail.querySelectorAll(".resettle").forEach(function(b){b.addEventListener("click",function(){
+    delete r.offers[b.dataset.oi];
+    var body=detail.querySelector("#offersBody");if(body){body.innerHTML=offersInner(e,i);wireOffers(i);}
+    applyOfferFilters(i);renderEList();
+  });});
+  var searchEl=detail.querySelector(".search");if(searchEl)searchEl.addEventListener("input",function(){applyOfferFilters(i);});
+  detail.querySelectorAll(".f-explicit,.f-settled,.f-futures").forEach(function(c){c.addEventListener("change",function(){applyOfferFilters(i);});});
+}
+function wire(i){
+  var e=session.events[i],r=session.resp[i];
+  detail.querySelectorAll(".sec-head").forEach(function(h){h.addEventListener("click",function(){h.closest(".section").classList.toggle("collapsed");});});
+  detail.querySelector(".close").addEventListener("click",function(){captureInputs();session.idx=-1;renderEList();detail.innerHTML='<div class="detail-empty">Select an event on the left to settle it.</div>';cols.classList.remove("showing");});
+  detail.querySelectorAll(".starter-all").forEach(function(cb){cb.addEventListener("change",function(){detail.querySelectorAll('.starter[data-side="'+cb.dataset.side+'"]').forEach(function(p){p.checked=cb.checked;});});});
+  detail.querySelectorAll(".occ-name").forEach(function(n){n.addEventListener("click",function(ev){ev.stopPropagation();openOccMenu(n,n.dataset.side,n.dataset.player,i);});});
+  detail.querySelector("#saveBtn").addEventListener("click",function(){
+    captureInputs();
+    if(r.postponed){renderEList();var nx=firstIncomplete();if(nx===-1){finish();return;}openEvent(nx);return;}
+    detail.querySelectorAll(".offer").forEach(function(off){var oi=off.dataset.oi;if(r.offers[oi]!==undefined)return;
+      var nb=detail.querySelector('.nr-btn[data-oi="'+oi+'"]'),nr=nb&&nb.classList.contains("nr-on");
+      var vdEl=detail.querySelector('.vd[data-oi="'+oi+'"]'),voided=vdEl&&vdEl.checked,wins=[];
+      detail.querySelectorAll('.win[data-oi="'+oi+'"]').forEach(function(w){if(w.checked)wins.push(+w.dataset.ci);});
+      if(nr){r.offers[oi]={noResult:true,voided:false,wins:[]};}
+      else if(voided||wins.length){r.offers[oi]={voided:voided,wins:wins,noResult:false};}});
+    var body=detail.querySelector("#offersBody");if(body){body.innerHTML=offersInner(e,i);wireOffers(i);}
+    applyOfferFilters(i);renderEList();
+    if(eventComplete(i)){var next=firstIncomplete();if(next===-1){finish();return;}openEvent(next);return;}
+    collapseCompleted(i);
+  });
+  wireOffers(i);
+}
+
+/* scoring */
+function finish(){
+  stopTimer();var blocks=[],correct=0,total=0;
+  session.events.forEach(function(e,i){
+    var r=session.resp[i],items=[];
+    var gotPost=!!r.postponed;
+    if(e.sport!=="golf"){
+      var wantPost=!!e.postponeAns;
+      total++;if(wantPost===gotPost)correct++;
+      items.push({who:"Postponement",ok:wantPost===gotPost,txt:(wantPost===gotPost?("✓ "+(gotPost?"Postponed":"Not postponed")):("✗ you "+(gotPost?"postponed":"did not postpone")+" · correct: "+(wantPost?"Postpone":"Do not")))});
+    }
+    if(!gotPost){
+      if(e.sport==="golf"&&e.participants){e.participants.forEach(function(p,idx){var got=(r.placements[idx]||"").trim(),want=String(p[1]),c=got!==""&&got===want;total++;if(c)correct++;items.push({who:"Placement — "+p[0],ok:c,txt:c?("✓ "+got):("✗ "+(got||"—")+" · correct: "+want)});});}
+      if(e.results){[["fh.hg","FH Home goals"],["fh.ag","FH Away goals"],["ft.hg","FT Home goals"],["ft.ag","FT Away goals"],["ft.hc","FT Home corners"],["ft.ac","FT Away corners"]].forEach(function(d){var p=d[0].split("."),want=e.results[p[0]]&&e.results[p[0]][p[1]];if(want==null||want==="")return;var got=(r.results[d[0]]||"").trim(),c=got!==""&&got===String(want);total++;if(c)correct++;items.push({who:d[1],ok:c,txt:c?("✓ "+got):("✗ "+(got||"—")+" · correct: "+want)});});}
+      if(e.occurrence){
+        total++;if(r.occ.starterLog)correct++;items.push({who:"Starter log complete",ok:!!r.occ.starterLog,txt:r.occ.starterLog?"✓ ticked":"✗ not ticked"});
+        total++;if(r.occ.occLog)correct++;items.push({who:"Occurrence log complete",ok:!!r.occ.occLog,txt:r.occ.occLog?"✓ ticked":"✗ not ticked"});
+        ["home","away"].forEach(function(side){e.occurrence[side].players.forEach(function(p,idx){var want=!!p[1],got=!!r.occ.starters[side+":"+idx],c=want===got;total++;if(c)correct++;items.push({who:"Starter — "+e.occurrence[side].team+" "+p[0],ok:c,txt:c?("✓ "+(want?"Starter":"Not starting")):("✗ "+(got?"Starter":"Not starting")+" · correct: "+(want?"Starter":"Not starting"))});});});
+        var want=e.occurrence.events||[],got=r.occ.events||[];
+        function key(x){return x.side+"|"+x.player+"|"+x.type;}
+        var gotSet={};got.forEach(function(x){gotSet[key(x)]=true;});var wantSet={};want.forEach(function(x){wantSet[key(x)]=true;});
+        want.forEach(function(x){var c=!!gotSet[key(x)];total++;if(c)correct++;items.push({who:"Occurrence — "+x.player+" ("+x.type+")",ok:c,txt:c?"✓ logged":"✗ missing"});});
+        got.forEach(function(x){if(!wantSet[key(x)]){total++;items.push({who:"Occurrence — "+x.player+" ("+x.type+")",ok:false,txt:"✗ extra (not correct)"});}});
+      }
+      (e.offers||[]).forEach(function(o,oi){var resp=r.offers[oi]||{voided:false,wins:[],noResult:false};var wantNR=!!o.noResultAns,wantVoid=!!o.voidAns,wantW=(o.win||[]).slice().sort().join(",");var gotNR=!!resp.noResult,gotVoid=!!resp.voided,gotW=(resp.wins||[]).slice().sort().join(",");var c=wantNR?gotNR:(wantVoid?(gotVoid&&!gotNR&&!resp.wins.length):(!gotVoid&&!gotNR&&gotW===wantW));total++;if(c)correct++;var wt=wantNR?"No result":(wantVoid?"Void":((o.win||[]).map(function(ci){return o.outcomes[ci];}).join(", ")||"—"));var gt=gotNR?"No result":(gotVoid?"Void":(resp.wins.map(function(ci){return o.outcomes[ci];}).join(", ")||"not settled"));items.push({who:"Offer — "+o.m1,ok:c,txt:c?("✓ "+gt):("✗ "+gt+" · correct: "+wt)});});
+    }
+    blocks.push({h:(i+1)+". "+e.name,items:items});
+  });
+  var rec={date:new Date().toISOString(),category:session.cat,score:correct,total:total,timeSec:session.speed?session.timeSec:null};
+  history.push(rec);jset("stHistory",history);renderResults(correct,total,blocks,rec);show("results");
+}
+function renderResults(correct,total,blocks,rec){
+  var pct=total?Math.round(correct/total*100):0,pass=pct>=80;
+  var html='<div class="hero"><div class="bar">Results</div><div class="in">'+
+    '<div class="res-score">You scored <span class="'+(pass?"pass":"fail")+'">'+correct+' / '+total+'</span> ('+pct+'%)</div>'+
+    '<div class="res-sub">'+(pass?"Passing — nicely settled.":"Below 80% — review the misses below.")+'</div>'+
+    '<div class="res-meta"><span>Category: <b>'+esc(rec.category==="__all"?"All":rec.category)+'</b></span>'+(rec.timeSec!=null?'<span>Time: <b>'+fmt(rec.timeSec)+'</b></span>':'')+'<span>Correct: <b>'+correct+'</b></span><span>Wrong: <b>'+(total-correct)+'</b></span></div>'+
+    blocks.map(function(b){if(!b.items.length)return"";return '<div class="res-block"><h4>'+esc(b.h)+'</h4>'+b.items.map(function(it){return '<div class="res-item '+(it.ok?"correct":"wrong")+'"><span>'+esc(it.who)+'</span><span class="verdict">'+esc(it.txt)+'</span></div>';}).join("")+'</div>';}).join("")+
+    '<div style="display:flex;gap:10px;margin-top:16px"><button class="btn" data-go="setup">New session</button><button class="btn ghost" data-go="home">Home</button></div></div></div>';
+  document.getElementById("resWrap").innerHTML=html;
+}
+
+/* ============ CREATE ============ */
+function renderCreate(){renderCatList();fillCatSelect();renderEventList();syncSport();}
+function renderCatList(){var el=document.getElementById("catList");
+  el.innerHTML=categories.length?categories.map(function(c,i){return '<div class="line"><span>'+esc(c)+'</span><button class="rmc" data-dc="'+i+'">Remove</button></div>';}).join(""):'<div class="empty">No categories.</div>';
+  el.querySelectorAll("[data-dc]").forEach(function(b){b.addEventListener("click",function(){categories.splice(+b.dataset.dc,1);jset("categories",categories);renderCreate();});});}
+function fillCatSelect(){document.getElementById("e-cat").innerHTML=categories.map(function(c){return '<option>'+esc(c)+'</option>';}).join("")||'<option value="">(add a category)</option>';}
+document.getElementById("addCatBtn").addEventListener("click",function(){var v=document.getElementById("newCat").value.trim();if(!v)return;if(categories.indexOf(v)===-1){categories.push(v);jset("categories",categories);}document.getElementById("newCat").value="";renderCreate();});
+
+/* import / export */
+document.getElementById("exportBtn").addEventListener("click",function(){
+  try{var blob=new Blob([JSON.stringify({categories:categories,events:events},null,2)],{type:"application/json"});
+    var url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="settlement-training-events.json";document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
+    iemsg("Exported "+events.length+" events.");}catch(e){iemsg("Export failed.",true);}
+});
+document.getElementById("importFile").addEventListener("change",function(){
+  var f=this.files&&this.files[0];if(!f)return;var rd=new FileReader();
+  rd.onload=function(){try{var data=JSON.parse(rd.result);var imp=Array.isArray(data)?data:data.events;
+    if(!Array.isArray(imp))throw 0;
+    if(data.categories&&Array.isArray(data.categories))data.categories.forEach(function(c){if(categories.indexOf(c)===-1)categories.push(c);});
+    imp.forEach(function(ev){if(ev&&ev.name)events.push(ev);});
+    jset("categories",categories);jset("stEvents",events);renderCreate();renderHome();iemsg("Imported "+imp.length+" events.");}
+    catch(e){iemsg("Import failed — not a valid events file.",true);}};
+  rd.readAsText(f);this.value="";
+});
+function iemsg(t,err){var m=document.getElementById("ieMsg");m.textContent=t;m.className="msg"+(err?" err":" ok");}
+
+var sportSel=document.getElementById("e-sport"),fbAuth=document.getElementById("fbAuth"),golfAuth=document.getElementById("golfAuth"),
+    plAuth=document.getElementById("plAuth"),offersAuth=document.getElementById("offersAuth"),
+    ocHome=document.getElementById("ocHome"),ocAway=document.getElementById("ocAway"),occAuth=document.getElementById("occAuth");
+function syncSport(){var g=sportSel.value==="golf";golfAuth.classList.toggle("hidden",!g);fbAuth.classList.toggle("hidden",g);}
+sportSel.addEventListener("change",syncSport);
+
+function plRow(n,p){var el=document.createElement("div");el.className="pl-a";el.innerHTML='<input class="pl-name" placeholder="Participant" value="'+esc(n||"")+'"><input class="pl-plc" placeholder="Placement" inputmode="numeric" value="'+esc(p==null?"":p)+'"><button class="rmc">✕</button>';el.querySelector(".rmc").addEventListener("click",function(){el.remove();});return el;}
+document.getElementById("addPl").addEventListener("click",function(){plAuth.appendChild(plRow("",""));});
+
+function ocpRow(name,starter){var el=document.createElement("div");el.className="lp-a";el.innerHTML='<input class="lp-name" placeholder="Player" value="'+esc(name||"")+'"><label><input type="checkbox" class="lp-start"'+(starter?" checked":"")+'> Starter</label><button class="rmc">✕</button>';el.querySelector(".rmc").addEventListener("click",function(){el.remove();});return el;}
+document.querySelectorAll("[data-add-oc]").forEach(function(b){b.addEventListener("click",function(){(b.dataset.addOc==="home"?ocHome:ocAway).appendChild(ocpRow("",false));});});
+
+function occRow(side,player,type){var el=document.createElement("div");el.className="occ-a";
+  el.innerHTML='<select class="occ-side"><option value="home"'+(side==="home"?" selected":"")+'>Home</option><option value="away"'+(side==="away"?" selected":"")+'>Away</option></select>'+
+    '<input class="occ-player-a" placeholder="Player name" value="'+esc(player||"")+'"><select class="occ-type-a">'+OCC_TYPES.map(function(t){return '<option'+(t===type?" selected":"")+'>'+t+'</option>';}).join("")+'</select><button class="rmc">✕</button>';
+  el.querySelector(".rmc").addEventListener("click",function(){el.remove();});return el;}
+document.getElementById("addOcc").addEventListener("click",function(){occAuth.appendChild(occRow("home","","Goal"));});
+
+function ocRow(name){var el=document.createElement("div");el.className="oc-a";el.innerHTML='<input class="oc-name" placeholder="Outcome" value="'+esc(name||"")+'"><label><input type="checkbox" class="oc-win"> Winner</label><button class="rmc">✕</button>';el.querySelector(".rmc").addEventListener("click",function(){el.remove();});return el;}
+function offerBlock(m1,betType,ref,outs){var b=document.createElement("div");b.className="oa";
+  b.innerHTML='<div class="oa-top"><div class="field"><label>Description (bold)</label><input class="oa-m1" placeholder="e.g. Full Time - 1X2" value="'+esc(m1||"")+'"></div><button class="rm">Remove</button></div>'+
+    '<div class="row2"><div class="field"><label>Bet type (grey)</label><input class="oa-bt" placeholder="e.g. 1 x 2" value="'+esc(betType||"1 x 2")+'"></div><div class="field"><label>Ref (fake)</label><input class="oa-ref" placeholder="e.g. 2677085677" value="'+esc(ref||"")+'"></div></div>'+
+    '<div class="voidwin"><label><input type="checkbox" class="oa-void"> Whole offer voids</label><label><input type="checkbox" class="oa-nr"> No result (no answer)</label><span class="hint" style="margin:0">…otherwise tick the winning outcome(s)</span></div>'+
+    '<div class="ocs"></div><button class="addlink add-oc">+ Add outcome</button>';
+  var ocs=b.querySelector(".ocs");(outs&&outs.length?outs:["","",""]).forEach(function(o){ocs.appendChild(ocRow(o));});
+  b.querySelector(".rm").addEventListener("click",function(){b.remove();});b.querySelector(".add-oc").addEventListener("click",function(){ocs.appendChild(ocRow(""));});return b;}
+document.getElementById("addOffer").addEventListener("click",function(){offersAuth.appendChild(offerBlock());});
+
+function seedForm(){
+  plAuth.innerHTML="";[["",""],["",""],["",""]].forEach(function(p){plAuth.appendChild(plRow(p[0],p[1]));});
+  ocHome.innerHTML="";ocAway.innerHTML="";for(var i=0;i<3;i++){ocHome.appendChild(ocpRow("",false));ocAway.appendChild(ocpRow("",false));}
+  occAuth.innerHTML="";
+  offersAuth.innerHTML="";offersAuth.appendChild(offerBlock("Full Time - 1X2","1 x 2","",["Home","Draw","Away"]));syncSport();
+}
+seedForm();
+document.getElementById("clearEventBtn").addEventListener("click",function(){["e-name","e-time","e-id","e-bc","e-tops","r-fh-hg","r-fh-ag","r-ft-hg","r-ft-ag","r-ft-hc","r-ft-ac","oc-home-team","oc-away-team"].forEach(function(id){var el=document.getElementById(id);if(el)el.value=(id==="e-tops"?"5, 10":"");});document.getElementById("e-postpone").checked=false;sportSel.value="football";seedForm();cmsg("");});
+function cmsg(t,err){var m=document.getElementById("createMsg");m.textContent=t;m.className="msg"+(err?" err":t?" ok":"");}
+
+document.getElementById("saveEventBtn").addEventListener("click",function(){
+  var name=document.getElementById("e-name").value.trim();if(!name){cmsg("Give the event a name.",true);return;}
+  var cat=document.getElementById("e-cat").value;if(!cat){cmsg("Add a category first.",true);return;}
+  var sport=sportSel.value,dispId=document.getElementById("e-id").value.trim()||String(1020000000+Math.floor(Math.random()*9999999));
+  var ev={id:dispId,name:name,category:cat,sport:sport,time:document.getElementById("e-time").value.trim(),bc:document.getElementById("e-bc").value.trim(),postponeAns:document.getElementById("e-postpone").checked};
+  if(sport==="golf"){
+    ev.topCols=(document.getElementById("e-tops").value||"").split(",").map(function(x){return parseInt(x.trim(),10);}).filter(function(n){return !isNaN(n);});
+    ev.participants=[];var bad=false;
+    plAuth.querySelectorAll(".pl-a").forEach(function(r){var nm=r.querySelector(".pl-name").value.trim(),pl=r.querySelector(".pl-plc").value.trim();if(nm&&pl!=="")ev.participants.push([nm,parseInt(pl,10)]);else if(nm||pl!=="")bad=true;});
+    if(bad){cmsg("Each participant needs a name and a placement.",true);return;}
+  } else {
+    function num(id){var v=document.getElementById(id).value.trim();return v===""?null:parseInt(v,10);}
+    var fh={hg:num("r-fh-hg"),ag:num("r-fh-ag")},ft={hg:num("r-ft-hg"),ag:num("r-ft-ag"),hc:num("r-ft-hc"),ac:num("r-ft-ac")};
+    if(fh.hg!=null||fh.ag!=null||ft.hg!=null||ft.ag!=null||ft.hc!=null||ft.ac!=null)ev.results={fh:fh,ft:ft};
+    var hp=[],ap=[];
+    ocHome.querySelectorAll(".lp-a").forEach(function(r){var nm=r.querySelector(".lp-name").value.trim();if(nm)hp.push([nm,r.querySelector(".lp-start").checked]);});
+    ocAway.querySelectorAll(".lp-a").forEach(function(r){var nm=r.querySelector(".lp-name").value.trim();if(nm)ap.push([nm,r.querySelector(".lp-start").checked]);});
+    if(hp.length||ap.length){
+      var occEvents=[];occAuth.querySelectorAll(".occ-a").forEach(function(r){var pl=r.querySelector(".occ-player-a").value.trim();if(pl)occEvents.push({side:r.querySelector(".occ-side").value,player:pl,type:r.querySelector(".occ-type-a").value});});
+      ev.occurrence={home:{team:document.getElementById("oc-home-team").value.trim()||"Home",players:hp},away:{team:document.getElementById("oc-away-team").value.trim()||"Away",players:ap},events:occEvents};
+    }
+  }
+  var offers=[],prob=null;
+  offersAuth.querySelectorAll(".oa").forEach(function(b){var m1=b.querySelector(".oa-m1").value.trim(),bt=b.querySelector(".oa-bt").value.trim(),ref=b.querySelector(".oa-ref").value.trim(),voided=b.querySelector(".oa-void").checked,nr=b.querySelector(".oa-nr").checked,outs=[],win=[];
+    b.querySelectorAll(".oc-a").forEach(function(r){var nm=r.querySelector(".oc-name").value.trim();if(nm){if(r.querySelector(".oc-win").checked)win.push(outs.length);outs.push(nm);}});
+    if(!m1&&!outs.length)return;if(!outs.length){prob="Every offer needs outcomes.";return;}
+    if(!nr&&!voided&&!win.length){prob="Tick a winner, Void, or No result: "+(m1||"(offer)");return;}
+    offers.push({m1:m1||"Offer",betType:bt||"1 x 2",ref:ref,outcomes:outs,win:(voided||nr)?[]:win,voidAns:nr?false:voided,noResultAns:nr});});
+  if(prob){cmsg(prob,true);return;}
+  if(!offers.length&&!ev.results&&!ev.participants&&!ev.postponeAns){cmsg("Add results, participants, offers, or mark it postponed.",true);return;}
+  ev.offers=offers;events.push(ev);jset("stEvents",events);
+  cmsg(store.ok?"Saved ✓ — now in Start.":"Saved for this session (storage blocked in preview).");
+  document.getElementById("e-name").value="";seedForm();renderEventList();
+});
+function renderEventList(){var el=document.getElementById("eventList");
+  el.innerHTML=events.length?events.map(function(e,i){return '<div class="line"><span><b>'+esc(e.name)+'</b> — '+esc(e.category)+' · '+esc(e.sport)+' · '+((e.offers||[]).length)+' offers'+(e.postponeAns?' · postponed':'')+'</span><button class="rmc" data-de="'+i+'">Delete</button></div>';}).join(""):'<div class="empty">No events yet.</div>';
+  el.querySelectorAll("[data-de]").forEach(function(b){b.addEventListener("click",function(){if(confirm("Delete this event?")){events.splice(+b.dataset.de,1);jset("stEvents",events);renderEventList();renderHome();}});});}
+
+document.getElementById("s-learn").addEventListener("click",function(ev){var h=ev.target.closest(".sec-head");if(h&&document.getElementById("s-learn").contains(h))h.closest(".section").classList.toggle("collapsed");});
+/* ============ SETTLEMENT ASSISTANT — client-only FAQ (no backend, no key) ============ */
+(function(){
+  var msgs=document.getElementById("asstMsgs"),chipsEl=document.getElementById("asstChips");if(!msgs)return;
+  var AVA_BOT='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="8" width="16" height="12" rx="2.5"/><path d="M12 8V4M9 4h6"/><circle cx="9.2" cy="14" r="1.3" fill="currentColor" stroke="none"/><circle cx="14.8" cy="14" r="1.3" fill="currentColor" stroke="none"/><path d="M2 13v3M22 13v3"/></svg>';
+  var AVA_USER='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>';
+  var av=document.getElementById("asstAva");if(av)av.innerHTML=AVA_BOT;
+
+  function norm(s){return (s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^\w\s-]/g," ").replace(/\s+/g," ").trim();}
+  function toks(s){return norm(s).split(" ").filter(Boolean);}
+  function lev(a,b){a=norm(a);b=norm(b);var m=a.length,n=b.length;if(!m)return n;if(!n)return m;var dp=[];for(var j=0;j<=n;j++)dp[j]=j;for(var i=1;i<=m;i++){var pr=dp[0];dp[0]=i;for(var k=1;k<=n;k++){var tm=dp[k];dp[k]=a[i-1]===b[k-1]?pr:1+Math.min(pr,dp[k],dp[k-1]);pr=tm;}}return dp[n];}
+  function md(t){t=esc(t);return t.replace(/\*\*(.+?)\*\*/g,"<strong>$1</strong>");}
+
+  var DEFAULT_CHIPS=["How do I start a quiz?","How do I settle a bet offer?","Void vs No result","How do I log goals?"];
+  var GREET=["hi","hello","hey","yo","good morning","good afternoon","good evening"],THANKS=["thanks","thank you","thx","ty","cheers"];
+  var SYN={settle:["settling","settlement"],offer:["market","bet"],void:["cancel"],goal:["goals","score","scorer"],substitution:["sub","subs"],import:["upload","load"],export:["download","backup"],create:["author","make","build"],start:["begin","launch"],score:["grade","mark","result"],postpone:["postponed","abandon","abandoned"]};
+  var KB=[
+   {id:"start",title:"How to start a quiz",utterances:["how do i start a quiz","start quiz","begin","take a quiz","practice"],tags:["start","quiz","begin","practice","session"],answerShort:"Open **Start**, pick a **category**, choose **how many events**, optionally turn on **Speed test** for a timer, then press **Begin**.",followups:["What is the speed test?","How is it scored?","How do I settle a bet offer?"]},
+   {id:"settle",title:"How to settle a bet offer",utterances:["how do i settle a bet offer","settle offer","win or void","how to settle","mark the winner"],tags:["settle","offer","win","winner","void","save","bet"],answerShort:"In **Bet Offers**, tick the **winning outcome**, or the single **Void** box, or click the **⊘** for **No result** — then press **SAVE**. Settled offers drop off the Explicit list.",followups:["Void vs No result","How do I redo an offer?"]},
+   {id:"voidnr",title:"Void vs No result",utterances:["void vs no result","difference between void and no result","what is no result","when to void"],tags:["void","no result","difference"],answerShort:"**Void** cancels the offer and returns stakes. **No result** means the market has no valid result to settle against. They're scored separately — use whichever the answer key expects.",followups:["How do I settle a bet offer?","How is it scored?"]},
+   {id:"resettle",title:"How to redo a settled offer",utterances:["how do i redo an offer","undo settle","resettle","change my answer","trash icon"],tags:["resettle","redo","undo","trash","settled"],answerShort:"Tick **Settled** to show offers you've already done, then click the **🗑 trash** on an offer to un-settle it and try again.",followups:["How do I settle a bet offer?"]},
+   {id:"occ",title:"How to log goals and substitutions",utterances:["how do i log goals","player occurrences","add a goal","substitution","log occurrence","how to add goal"],tags:["occurrence","goal","substitution","player","lineup","starter","log"],answerShort:"In **Player Occurrences**, **click a player's name** — a menu opens with **Goal / Substitution / Own goal**. Tick the two **log complete** boxes when you're done.",followups:["How do own goals work?","How is it scored?"]},
+   {id:"owngoal",title:"How own goals work",utterances:["how do own goals work","own goal","own goal side","which team gets the own goal"],tags:["own goal","opposing","team","credit"],answerShort:"An **own goal counts for the opposing team** — it adds to their score and shows on their side, not the scorer's.",followups:["How do I log goals?"]},
+   {id:"postpone",title:"How to postpone an event",utterances:["how do i postpone","postpone event","entire event","event called off","abandoned"],tags:["postpone","postponement","entire","event"],answerShort:"Open **Postponements**, tick **Entire Event**, and **SAVE**. That postpones the whole event and closes it — you skip the rest.",followups:["How does an event close?"]},
+   {id:"results",title:"How to enter the score",utterances:["how do i enter the score","results","goals and corners","first half score","full time"],tags:["results","score","goals","corners","half","period"],answerShort:"In **Results**, type the goals and corners for **First half** and **Full Time**. Remember a '1st Half' market settles on the **half-time** score.",followups:["How do I settle a bet offer?"]},
+   {id:"golf",title:"How golf settles",utterances:["how does golf settle","golf","placement","position results","top 5 top 10"],tags:["golf","placement","position","top","strokes"],answerShort:"In **Position Results**, type each player's **Placement**. The **Top** columns are set when the event is created (any values you like).",followups:["How do I create an event?"]},
+   {id:"create",title:"How to create an event",utterances:["how do i create an event","create","author","new event","make a quiz","set answers"],tags:["create","author","event","answer","key"],answerShort:"Open **Create**, fill in the name, sport, time and category, then build the sections (Results, Occurrences, Bet Offers) and set the **correct answers**. Press **Save event**.",followups:["How do I import or export events?","How do categories work?"]},
+   {id:"impexp",title:"How to import or export events",utterances:["how do i import events","export events","backup events","move events","json"],tags:["import","export","json","backup","events"],answerShort:"In **Create**, use **Export events** to download everything as JSON, or **Import events** to load a JSON file — it's added to your existing events.",followups:["How do I create an event?"]},
+   {id:"cats",title:"How categories work",utterances:["how do categories work","categories","filter events","football or golf category"],tags:["category","categories","filter"],answerShort:"Add categories in **Create**. On **Start** you pick a category (or **All**) to choose which events you practise.",followups:["How do I start a quiz?"]},
+   {id:"speed",title:"What is the speed test",utterances:["what is the speed test","timer","time me","speed test"],tags:["speed","timer","time"],answerShort:"Turn on **Speed test** on the Start screen to show a running timer and record your total time on the Results page.",followups:["How do I start a quiz?","How is it scored?"]},
+   {id:"score",title:"How it is scored",utterances:["how is it scored","scoring","results page","pass mark","my score"],tags:["score","scoring","results","pass","grade"],answerShort:"When every event is settled, **Results** shows each item green (correct) or red (wrong), your total score, percentage, and pass mark (**≥ 80%**).",followups:["How does an event close?"]},
+   {id:"close",title:"How an event closes",utterances:["how does an event close","why did it disappear","event hidden","finish event","when does results show"],tags:["close","finish","complete","hide","results"],answerShort:"An event closes when **everything** is answered — results, occurrences and all offers — or when you postpone it. Finished events drop off the list; when the list is empty, your **Results** appear.",followups:["How is it scored?"]},
+   {id:"settlement",title:"What is settlement",utterances:["what is settlement","explain settlement","what does settling mean"],tags:["settlement","meaning","what"],answerShort:"Settlement is **resolving bets after an event is played** — marking each market so winning bets pay and losing bets don't. The **Learn** tab has a full primer.",followups:["Where do I learn the sports?","How do I settle a bet offer?"]},
+   {id:"learn",title:"Where to learn the sports",utterances:["where do i learn the sports","learn tab","sports basics","football rules","golf rules"],tags:["learn","sports","primer","rules"],answerShort:"Open the **Learn** tab — it covers settlement basics plus football, golf and quick intros to other sports.",followups:["What is settlement?","How do I start a quiz?"]},
+   {id:"help",title:"I need more help",utterances:["i need more help","help","support","i am stuck","contact"],tags:["help","support","stuck"],answerShort:"Tell me what you're trying to do and I'll point you to the right screen. For real settlement rules, follow the official guidance or ask a settlement expert.",followups:["What is settlement?","How do I start a quiz?"]}
+  ];
+  function scoreIntent(query){
+    var q=norm(query),qT=toks(q),exp={};
+    qT.forEach(function(t){exp[t]=1;Object.keys(SYN).forEach(function(k){if(t===k||SYN[k].indexOf(t)>-1){exp[k]=1;SYN[k].forEach(function(v){exp[v]=1;});}});});
+    var T=Object.keys(exp);
+    return KB.map(function(it){
+      var corpus=norm([it.title].concat(it.utterances||[],it.tags||[]).join(" ")),s=0;
+      T.forEach(function(t){if(t.length<3)return;if(corpus.indexOf(t)>-1)s+=2;if(t.length>=4&&corpus.indexOf(t.slice(0,4))>-1)s+=0.5;});
+      if(q.length<=30){var d=[it.title].concat(it.utterances||[]).map(function(u){return lev(q,u);});s+=Math.max(0,6-Math.min(Math.min.apply(null,d),6));}
+      return {id:it.id,score:s};
+    }).sort(function(a,b){return b.score-a.score;});
+  }
+  function addRow(role,html){var r=document.createElement("div");r.className="row "+role;r.innerHTML='<div class="av">'+(role==="user"?AVA_USER:AVA_BOT)+'</div><div class="bubble">'+html+'</div>';msgs.appendChild(r);msgs.scrollTop=msgs.scrollHeight;return r;}
+  function typing(){var r=document.createElement("div");r.className="row bot";r.innerHTML='<div class="av">'+AVA_BOT+'</div><div class="bubble"><div class="typing"><span></span><span></span><span></span></div></div>';msgs.appendChild(r);msgs.scrollTop=msgs.scrollHeight;return r;}
+  function answerFor(it){var h="<div>"+md(it.answerShort)+"</div>";if(it.steps&&it.steps.length){h+="<ul>"+it.steps.map(function(s){return "<li>"+md(s)+"</li>";}).join("")+"</ul>";}return h;}
+  function chips(list){chipsEl.innerHTML="";(list||[]).forEach(function(c){var b=document.createElement("button");b.className="chip";b.textContent=c;b.addEventListener("click",function(){ask(c);});chipsEl.appendChild(b);});}
+  function respond(q){
+    var nq=norm(q);
+    if(GREET.some(function(g){return nq===g||nq.indexOf(g+" ")===0;})){addRow("bot","Hi! I can help with how the app works and settlement basics. Pick a question:");chips(DEFAULT_CHIPS);return;}
+    if(THANKS.some(function(g){return nq.indexOf(g)>-1;})){addRow("bot","You're welcome — anything else?");chips(DEFAULT_CHIPS);return;}
+    var top=scoreIntent(q)[0];
+    if(!top||top.score<3){addRow("bot","I'm not sure about that one. Here are things I can help with:");chips(DEFAULT_CHIPS);return;}
+    var it=KB.filter(function(k){return k.id===top.id;})[0];
+    addRow("bot",answerFor(it));chips(it.followups&&it.followups.length?it.followups:DEFAULT_CHIPS);
+  }
+  function ask(text){addRow("user",esc(text));var t=typing();setTimeout(function(){t.remove();respond(text);},360);}
+  function intro(){addRow("bot","Hi — I'm the Settlement Assistant. Ask me how the app works, or about settlement basics. Try one of these:");chips(DEFAULT_CHIPS);}
+  document.getElementById("asstSend").addEventListener("click",function(){var i=document.getElementById("asstInput"),v=(i.value||"").trim();if(!v)return;i.value="";ask(v);});
+  document.getElementById("asstInput").addEventListener("keydown",function(e){if(e.key==="Enter"){e.preventDefault();document.getElementById("asstSend").click();}});
+  document.getElementById("asstClear").addEventListener("click",function(){msgs.innerHTML="";intro();});
+  var robot=document.getElementById("robotWidget"),popup=document.getElementById("chatPopup"),closeBtn=document.getElementById("asstClose");
+  function openChat(){popup.classList.add("visible");popup.setAttribute("aria-hidden","false");setTimeout(function(){var i=document.getElementById("asstInput");if(i)i.focus();},60);}
+  function closeChat(){popup.classList.remove("visible");popup.setAttribute("aria-hidden","true");}
+  if(robot){robot.addEventListener("click",function(){popup.classList.contains("visible")?closeChat():openChat();});robot.addEventListener("keydown",function(e){if(e.key==="Enter"||e.key===" "){e.preventDefault();robot.click();}});}
+  if(closeBtn)closeBtn.addEventListener("click",closeChat);
+  document.addEventListener("keydown",function(e){if(e.key==="Escape"&&popup.classList.contains("visible"))closeChat();});
+  intro();
+})();
+
+document.addEventListener("click",function(){closeOccMenu();});
+renderHome();
+})();
+</script>
+</body>
+</html>
